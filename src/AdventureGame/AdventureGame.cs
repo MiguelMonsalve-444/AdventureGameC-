@@ -19,10 +19,17 @@ public class AdventureGame
 	private bool hasPlayerQuit;
 	private bool isAdventureAlive;
 	private string lastDirection;
+	private bool grueIsChasing;
+	private int grueRow;
+	private int grueCol;
+	private int exitRow;
+	private int exitCol;
+
+
 
 	public AdventureGame()
 	{
-
+		
 	}
 
 	public void Start()
@@ -58,44 +65,24 @@ public class AdventureGame
 	{
 		adventurer = new Adventurer();
 
-		Room r1 = new Room();
-		r1.SetLit(true);
-		r1.SetDescription("Room 1");
-		r1.SetSouth(true);
-		r1.SetEast(true);
-		r1.SetLamp(true);
-		r1.SetKey(true);
+		DungeonLoader loader = new DungeonLoader();
+		DungeonData data = loader.Load("res/Dungeon.txt");
 
-		Room r2 = new Room();
-		r2.SetDescription("Room 2");
-		r2.SetSouth(true);
-		r2.SetWest(true);
+		dungeon = data.Dungeon;
+		
+		aRow = data.LampRow;
+		aCol = data.LampCol;
 
-		Room r3 = new Room();
-		r3.SetLit(true);
-		r3.SetDescription("Room 3");
-		r3.SetNorth(true);
-		r3.SetEast(true);
-		r3.SetChest(true);
+		grueCol = data.GrueCol;
+		grueRow = data.GrueCol;
 
-
-		Room r4 = new Room();
-		r4.SetDescription("Room 4");
-		r4.SetNorth(true);
-		r4.SetWest(true);
-
-		dungeon = new Room[,]
-		{
-			{ r1, r2 },
-			{ r3, r4 }
-		};
-
-		aRow = 1;
-		aCol = 0;
+		exitRow = data.ExitRow;
+		exitCol = data.ExitCol;
 
 		isChestOpen = false;
 		hasPlayerQuit = false;
 		isAdventureAlive = true;
+		grueIsChasing = false;
 
 		lastDirection = string.Empty;
 	}
@@ -112,11 +99,17 @@ public class AdventureGame
 		if(adventurer.HasLamp() || r.IsLit())
 		{
 			Console.WriteLine(r.GetDescription());
+
+			if(r.HasChest() && !isChestOpen )
+			{
+				Console.WriteLine("There is a chest in this room!");
+			}
+			else
+			{
+				Console.WriteLine("This Room is pitch black.");
+			}
 		}
-		else
-		{
-			Console.WriteLine("This room is pitch black!");
-		}
+		
 	}
 
 	private void ShowInputOptions()
@@ -192,12 +185,47 @@ public class AdventureGame
 
 	private void UpdateGameState()
 	{
+		if(grueIsChasing)
+		{
+			MoveGrue();
 
+			if(aRow == grueRow && aCol == grueCol)
+			{
+				Console.WriteLine("The grue caught you!");
+				isAdventureAlive = false;
+				return;
+			}
+		}
+
+		if(isChestOpen && aRow == exitRow && aCol == exitCol)
+		{
+			Console.WriteLine("You escaped with the treasure! You win!");
+			isAdventureAlive = false;
+		}
+	}
+
+	private void MoveGrue()
+	{
+		if(grueRow < aRow)
+		{
+			grueRow += 1;
+		}
+		else if(grueRow > aRow)
+		{
+			grueRow -= 1;
+		}else if (grueCol < aCol)
+		{
+			grueCol += 1;
+		}
+		else if(grueCol > aCol)
+		{
+			grueCol -= 1;
+		}
 	}
 
 	private bool IsGameOver()
 	{
-		return isChestOpen || hasPlayerQuit || !isAdventureAlive;
+		return hasPlayerQuit || !isAdventureAlive;
 	}
 
 	private void ShowGameOverScreen()
@@ -291,8 +319,10 @@ public class AdventureGame
 		{
 			if(adventurer.HasKey())
 			{
-				Console.WriteLine("You got the treasure!");
+				Console.WriteLine("You open the treasure!");
+				Console.WriteLine("The grue is chansing you!");
 				isChestOpen = true;
+				grueIsChasing = true;
 			}
 			else
 			{
