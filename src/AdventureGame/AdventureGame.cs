@@ -1,4 +1,5 @@
 using System.Diagnostics.Contracts;
+using System.Xml;
 
 namespace AdventureGame;
 
@@ -28,11 +29,27 @@ public class AdventureGame
 	private int exitRow;
 	private int exitCol;
 
+	public class Node
+	{
+		public int Row { get; set; }
+		public int Col { get; set; }
+		public Node? Parent { get; set; }
+
+		public Node(int row, int col)
+		{
+			Row = row;
+			Col = col;
+			
+		}
+	}
+
 
 
 	public AdventureGame()
 	{
 		
+
+
 	}
 
 	public void Start()
@@ -272,6 +289,7 @@ public class AdventureGame
 
 		if(adventurer.HasLamp() || r.IsLit())
 		{
+			//Cordenadas de la habitacion
 			Console.WriteLine($"{r.GetDescription()} [{aRow},{aCol}]");
 
 			if(r.HasChest() && !isChestOpen )
@@ -412,23 +430,106 @@ public class AdventureGame
 	// Mover el grue hacia el jugador
 	private void MoveGrue()
 	{
-		if(grueRow < aRow)
+	  List<Node> Path = FindPathBFS(grueRow, grueCol, aRow, aCol);
 		{
-			grueRow += 1;
-		}
-		else if(grueRow > aRow)
-		{
-			grueRow -= 1;
-		}else if (grueCol < aCol)
-		{
-			grueCol += 1;
-		}
-		else if(grueCol > aCol)
-		{
-			grueCol -= 1;
+			if(Path.Count > 1)
+			{
+				grueRow = Path[1].Row;
+				grueCol = Path[1].Col;
+			}
+			
 		}
 	}
 
+	private List<Node> FindPathBFS(int startRow, int startCol, int targetRow, int targetCol)
+{
+    Queue<Node> queue = new Queue<Node>();
+
+    List<Node> visited = new List<Node>();
+
+    Node startNode = new Node(startRow, startCol);
+
+    queue.Enqueue(startNode);
+    visited.Add(startNode);
+
+    while(queue.Count > 0)
+    {
+        Node current = queue.Dequeue();
+
+        if(current.Row == targetRow && current.Col == targetCol)
+        {
+            return BuildPath(current);
+        }
+
+        foreach(Node neighbor in GetNeighbors(current))
+        {
+            bool alreadyVisited = visited.Any(n =>
+                n.Row == neighbor.Row &&
+                n.Col == neighbor.Col);
+
+            if(alreadyVisited)
+            {
+                continue;
+            }
+
+            neighbor.Parent = current;
+
+            visited.Add(neighbor);
+
+            queue.Enqueue(neighbor);
+        }
+    }
+
+    return new List<Node>();
+}
+
+private List<Node> GetNeighbors(Node node)
+{
+    List<Node> neighbors = new List<Node>();
+
+    AddNeighbor(neighbors, node.Row - 1, node.Col);
+    AddNeighbor(neighbors, node.Row + 1, node.Col);
+    AddNeighbor(neighbors, node.Row, node.Col - 1);
+    AddNeighbor(neighbors, node.Row, node.Col + 1);
+
+    return neighbors;
+}
+
+private void AddNeighbor(List<Node> neighbors, int row, int col)
+{
+    int rows = dungeon.GetLength(0);
+    int cols = dungeon.GetLength(1);
+
+    if(row < 0 || row >= rows || col < 0 || col >= cols)
+    {
+        return;
+    }
+
+    if(dungeon[row, col] == null)
+    {
+        return;
+    }
+
+    neighbors.Add(new Node(row, col));
+}
+
+private List<Node> BuildPath(Node endNode)
+{
+    List<Node> path = new List<Node>();
+
+    Node current = endNode;
+
+    while(current != null)
+    {
+        path.Insert(0, current);
+
+		#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+		    current = current.Parent;
+		#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+        }
+
+    return path;
+}
 	private bool IsGameOver()
 	{
 		return hasPlayerWon || hasPlayerQuit || !isAdventureAlive;
