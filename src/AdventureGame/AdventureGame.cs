@@ -68,8 +68,7 @@ public class AdventureGame
 	{
 		adventurer = new Adventurer();
 
-		DungeonLoader loader = new DungeonLoader();
-		DungeonData data = loader.Load("res/Dungeon.txt");
+		DungeonData data = LoadDungeon("res/Dungeon.txt");
 
 		dungeon = data.Dungeon;
 		
@@ -89,6 +88,177 @@ public class AdventureGame
 		hasPlayerWon = false;
 
 		lastDirection = string.Empty;
+	}
+
+	private DungeonData LoadDungeon(string filePath)
+	{
+		string[] lines = File.ReadAllLines(filePath);
+		int index = 0;
+
+		int rows = int.Parse(lines[index++]);
+		int cols = int.Parse(lines[index++]);
+
+		int startRow = int.Parse(lines[index++]);
+		int startCol = int.Parse(lines[index++]);
+
+		int exitRow = int.Parse(lines[index++]);
+		int exitCol = int.Parse(lines[index++]);
+
+		int lampRow = int.Parse(lines[index++]);
+		int lampCol = int.Parse(lines[index++]);
+
+		int keyRow = int.Parse(lines[index++]);
+		int keyCol = int.Parse(lines[index++]);
+
+		int chestRow = int.Parse(lines[index++]);
+		int chestCol = int.Parse(lines[index++]);
+
+		int grueRow = int.Parse(lines[index++]);
+		int grueCol = int.Parse(lines[index++]);
+
+		Room[,] loadedDungeon = new Room[rows, cols];
+
+		for(int row = 0; row < rows; row++)
+		{
+			string mapLine = lines[index++];
+
+			for(int col = 0; col < cols; col++)
+			{
+				if(mapLine[col] != '#')
+				{
+					loadedDungeon[row, col] = new Room();
+				}
+			}
+		}
+
+		int descriptionIndex = 0;
+
+		while(index < lines.Length)
+		{
+			string line = lines[index++];
+
+			if(string.IsNullOrWhiteSpace(line))
+			{
+				continue;
+			}
+
+			string[] parts = line.Split('|');
+			bool isLit = parts[0] == "1";
+			string description = parts[1];
+
+			Room room = GetRoomByNumber(loadedDungeon, descriptionIndex);
+
+			if(room != null)
+			{
+				room.SetLit(isLit);
+				room.SetDescription(description);
+			}
+
+			descriptionIndex++;
+		}
+
+		SetRoomConnections(loadedDungeon);
+
+		GetRoomOrThrow(loadedDungeon, startRow, startCol, "start");
+		GetRoomOrThrow(loadedDungeon, exitRow, exitCol, "exit");
+		GetRoomOrThrow(loadedDungeon, grueRow, grueCol, "grue");
+
+		GetRoomOrThrow(loadedDungeon, lampRow, lampCol, "lamp").SetLamp(true);
+		GetRoomOrThrow(loadedDungeon, keyRow, keyCol, "key").SetKey(true);
+		GetRoomOrThrow(loadedDungeon, chestRow, chestCol, "chest").SetChest(true);
+
+		return new DungeonData
+		{
+			Dungeon = loadedDungeon,
+			StartRow = startRow,
+			StartCol = startCol,
+			ExitRow = exitRow,
+			ExitCol = exitCol,
+			LampRow = lampRow,
+			LampCol = lampCol,
+			KeyRow = keyRow,
+			KeyCol = keyCol,
+			ChestRow = chestRow,
+			ChestCol = chestCol,
+			GrueRow = grueRow,
+			GrueCol = grueCol
+		};
+	}
+
+	private Room GetRoomByNumber(Room[,] loadedDungeon, int roomNumber)
+	{
+		int count = 0;
+
+		for(int row = 0; row < loadedDungeon.GetLength(0); row++)
+		{
+			for(int col = 0; col < loadedDungeon.GetLength(1); col++)
+			{
+				if(loadedDungeon[row, col] != null)
+				{
+					if(count == roomNumber)
+					{
+						return loadedDungeon[row, col];
+					}
+
+					count++;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private Room GetRoomOrThrow(Room[,] loadedDungeon, int row, int col, string entityName)
+	{
+		int rows = loadedDungeon.GetLength(0);
+		int cols = loadedDungeon.GetLength(1);
+
+		if(row < 0 || row >= rows || col < 0 || col >= cols)
+		{
+			throw new InvalidDataException(
+				$"Invalid {entityName} coordinates ({row}, {col}). Valid range is row 0-{rows - 1}, col 0-{cols - 1}.");
+		}
+
+		Room room = loadedDungeon[row, col];
+
+		if(room == null)
+		{
+			throw new InvalidDataException(
+				$"Invalid {entityName} coordinates ({row}, {col}). The selected cell is a wall, not a room.");
+		}
+
+		return room;
+	}
+
+	private void SetRoomConnections(Room[,] loadedDungeon)
+	{
+		int rows = loadedDungeon.GetLength(0);
+		int cols = loadedDungeon.GetLength(1);
+
+		for(int row = 0; row < rows; row++)
+		{
+			for(int col = 0; col < cols; col++)
+			{
+				Room room = loadedDungeon[row, col];
+
+				if(room == null)
+				{
+					continue;
+				}
+
+				if(row > 0 && loadedDungeon[row - 1, col] != null)
+					room.SetNorth(true);
+
+				if(row < rows - 1 && loadedDungeon[row + 1, col] != null)
+					room.SetSouth(true);
+
+				if(col > 0 && loadedDungeon[row, col - 1] != null)
+					room.SetWest(true);
+
+				if(col < cols - 1 && loadedDungeon[row, col + 1] != null)
+					room.SetEast(true);
+			}
+		}
 	}
 
 	private void ShowGameStartScreen()
@@ -135,7 +305,7 @@ public class AdventureGame
 
 	private string GetInput()
 	{
-		return Console.ReadLine()!.ToUpper();
+		return (Console.ReadLine() ?? QUIT).ToUpper();
 	}
 
 	private bool IsValidInput(string input)
@@ -195,7 +365,8 @@ public class AdventureGame
 
 			if(!adventurer.HasLamp() && !currentRoom.IsLit())
 			{
-				Console.WriteLine("YOu entere a dark room and got eaten by the Grue!");
+				Console.WriteLine("You entered a dark room and got eaten by the Grue!");
+				isAdventureAlive = false;
 			}
 		}
 	}
@@ -361,8 +532,8 @@ public class AdventureGame
 		{
 			if(adventurer.HasKey())
 			{
-				Console.WriteLine("You open the treasure!");
-				Console.WriteLine("The grue is chansing you!");
+				Console.WriteLine("You got the treasure!");
+				Console.WriteLine("The grue is chasing you!");
 				isChestOpen = true;
 				grueIsChasing = true;
 			}
