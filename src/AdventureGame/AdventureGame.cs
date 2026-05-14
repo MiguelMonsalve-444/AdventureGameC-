@@ -1,3 +1,5 @@
+using System.Diagnostics.Contracts;
+
 namespace AdventureGame;
 
 public class AdventureGame
@@ -20,6 +22,7 @@ public class AdventureGame
 	private bool isAdventureAlive;
 	private string lastDirection;
 	private bool grueIsChasing;
+	private bool hasPlayerWon;
 	private int grueRow;
 	private int grueCol;
 	private int exitRow;
@@ -70,11 +73,11 @@ public class AdventureGame
 
 		dungeon = data.Dungeon;
 		
-		aRow = data.LampRow;
-		aCol = data.LampCol;
+		aRow = data.StartRow;
+		aCol = data.StartCol;
 
 		grueCol = data.GrueCol;
-		grueRow = data.GrueCol;
+		grueRow = data.GrueRow;
 
 		exitRow = data.ExitRow;
 		exitCol = data.ExitCol;
@@ -83,6 +86,7 @@ public class AdventureGame
 		hasPlayerQuit = false;
 		isAdventureAlive = true;
 		grueIsChasing = false;
+		hasPlayerWon = false;
 
 		lastDirection = string.Empty;
 	}
@@ -98,17 +102,24 @@ public class AdventureGame
 
 		if(adventurer.HasLamp() || r.IsLit())
 		{
-			Console.WriteLine(r.GetDescription());
+			Console.WriteLine($"{r.GetDescription()} [{aRow},{aCol}]");
 
 			if(r.HasChest() && !isChestOpen )
 			{
 				Console.WriteLine("There is a chest in this room!");
 			}
-			else
+			if(r.HasKey())
 			{
-				Console.WriteLine("This Room is pitch black.");
+				Console.WriteLine("This room has a key.");
 			}
-		}
+			if(r.HasLamp())
+			{
+				Console.WriteLine("There is a lamp in this room.");
+			}
+		} else
+			{
+				Console.WriteLine("The room is pitch black.");
+			}
 		
 	}
 
@@ -144,12 +155,7 @@ public class AdventureGame
 	{
 		Room r = dungeon[aRow, aCol];
 
-		if(!adventurer.HasLamp() && !r.IsLit() && input != lastDirection)
-		{
-			Console.WriteLine("You got eaten alive by the Grue!");
-			isAdventureAlive = false;
-		}
-		else if(input == GO_NORTH)
+		if(input == GO_NORTH)
 		{
 			GoNorth(r);
 		}
@@ -181,10 +187,38 @@ public class AdventureGame
 		{
 			Quit();
 		}
+		
+		// Verificar si el jugador entro a una habitacion oscura sin la lampara
+		if(isMovementInput(input))
+		{
+			Room currentRoom = dungeon[aRow, aCol];
+
+			if(!adventurer.HasLamp() && !currentRoom.IsLit())
+			{
+				Console.WriteLine("YOu entere a dark room and got eaten by the Grue!");
+			}
+		}
+	}
+
+	//Verificar si hubo imput despues de entrar en la habitacion con el grue 
+	private bool isMovementInput(string input)
+	{
+		return input == GO_NORTH ||
+			   input == GO_SOUTH ||
+			   input == GO_EAST  ||
+			   input == GO_WEST;
 	}
 
 	private void UpdateGameState()
 	{
+		if(grueIsChasing && aRow == grueRow && aCol == grueCol)
+		{
+			Console.WriteLine("Now you walked into the Grue.");
+			isAdventureAlive = false;
+			return;
+
+		}
+
 		if(grueIsChasing)
 		{
 			MoveGrue();
@@ -200,10 +234,11 @@ public class AdventureGame
 		if(isChestOpen && aRow == exitRow && aCol == exitCol)
 		{
 			Console.WriteLine("You escaped with the treasure! You win!");
-			isAdventureAlive = false;
+			hasPlayerWon = true;
 		}
 	}
 
+	// Mover el grue hacia el jugador
 	private void MoveGrue()
 	{
 		if(grueRow < aRow)
@@ -225,12 +260,19 @@ public class AdventureGame
 
 	private bool IsGameOver()
 	{
-		return hasPlayerQuit || !isAdventureAlive;
+		return hasPlayerWon || hasPlayerQuit || !isAdventureAlive;
 	}
 
 	private void ShowGameOverScreen()
 	{
-		Console.WriteLine("Game Over!");
+		if(hasPlayerWon == true)
+		{
+			Console.WriteLine("Congrats, You Won!");
+		}
+		else
+		{
+			Console.WriteLine("Game Over!"); 
+		}
 	}
 
 	private void GoNorth(Room r)
@@ -238,7 +280,7 @@ public class AdventureGame
 		if(r.HasNorth())
 		{
 			aRow -= 1;
-			lastDirection = GO_SOUTH;
+			lastDirection = GO_NORTH;
 		}
 		else
 		{
@@ -251,7 +293,7 @@ public class AdventureGame
 		if(r.HasSouth())
 		{
 			aRow += 1;
-			lastDirection = GO_NORTH;
+			lastDirection = GO_SOUTH;
 		}
 		else
 		{
@@ -264,7 +306,7 @@ public class AdventureGame
 		if(r.HasEast())
 		{
 			aCol += 1;
-			lastDirection = GO_WEST;
+			lastDirection = GO_EAST;
 		}
 		else
 		{
@@ -277,7 +319,7 @@ public class AdventureGame
 		if(r.HasWest())
 		{
 			aCol -= 1;
-			lastDirection = GO_EAST;
+			lastDirection = GO_WEST;
 		}
 		else
 		{

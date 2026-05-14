@@ -1,8 +1,12 @@
+
 namespace AdventureGame;
 
 public class DungeonData
 {
 public Room[,] Dungeon { get; set; }
+
+public int StartRow { get; set; }
+public int StartCol { get; set; }
 
 public int ExitRow { get; set; }
 public int ExitCol { get; set; }
@@ -19,6 +23,7 @@ public int ChestCol { get; set; }
 public int GrueRow { get; set; }
 public int GrueCol { get; set; }
 
+
 }
 
 public class DungeonLoader
@@ -31,6 +36,9 @@ public class DungeonLoader
 
         int rows = int.Parse(lines[index++]);
         int cols = int.Parse(lines[index++]);
+
+        int startRow = int.Parse(lines[index++]);
+        int startCol = int.Parse(lines[index++]);
 
         int exitRow = int.Parse(lines[index++]);
         int exitCol = int.Parse(lines[index++]);
@@ -91,13 +99,22 @@ public class DungeonLoader
 
         SetRoomConnections(dungeon);
 
-        dungeon[lampRow, lampCol].SetLamp(true);
-        dungeon[keyRow, keyCol].SetKey(true);
-        dungeon[chestRow, chestCol].SetChest(true);
+
+    // validar que no esten en una celda #
+    GetRoomOrThrow(dungeon, startRow, startCol, "start");
+    GetRoomOrThrow(dungeon, exitRow, exitCol, "exit");
+    GetRoomOrThrow(dungeon, grueRow, grueCol, "grue");
+
+        GetRoomOrThrow(dungeon, lampRow, lampCol, "lamp").SetLamp(true);
+        GetRoomOrThrow(dungeon, keyRow, keyCol, "key").SetKey(true);
+        GetRoomOrThrow(dungeon, chestRow, chestCol, "chest").SetChest(true);
 
         return new DungeonData
         {
             Dungeon = dungeon,
+
+            StartRow = startRow,
+            StartCol = startCol,
 
             ExitRow = exitRow,
             ExitCol = exitCol,
@@ -137,6 +154,28 @@ public class DungeonLoader
         }
 
         return null;
+    }
+
+    private Room GetRoomOrThrow(Room[,] dungeon, int row, int col, string entityName)
+    {
+        int rows = dungeon.GetLength(0);
+        int cols = dungeon.GetLength(1);
+
+        if(row < 0 || row >= rows || col < 0 || col >= cols)
+        {
+            throw new InvalidDataException(
+                $"Invalid {entityName} coordinates ({row}, {col}). Valid range is row 0-{rows - 1}, col 0-{cols - 1}.");
+        }
+
+        Room room = dungeon[row, col];
+
+        if(room == null)
+        {
+            throw new InvalidDataException(
+                $"Invalid {entityName} coordinates ({row}, {col}). The selected cell is a wall, not a room.");
+        }
+
+        return room;
     }
 
     private void SetRoomConnections(Room[,] dungeon)

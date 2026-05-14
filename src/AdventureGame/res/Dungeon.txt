@@ -1,0 +1,47 @@
+8
+8
+1
+1
+6
+6
+2
+1
+3
+5
+3
+4
+6
+1
+########
+#      #
+# #### #
+# #    #
+# # ## #
+# # ## #
+#      #
+########
+1|Entrance chamber
+1|Old stone hallway
+1|Dusty corridor
+0|Dark tunnel
+1|Broken armory
+0|Shadow passage
+1|Lamp chamber
+1|Narrow bridge
+0|Cold hallway
+1|Storage room
+1|Ancient library
+0|Dark corner
+1|Key chamber
+1|Collapsed hall
+0|Hidden passage
+1|Treasure vault
+1|Stone crossroads
+0|Grue tunnel
+1|Silent chamber
+1|Exit hallway
+0|Dark shrine
+1|Forgotten room
+1|Guard corridor
+0|Black corridor
+1|Final passage
